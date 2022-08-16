@@ -1,0 +1,119 @@
+-- select the employee with the highest sales:
+SELECT employee.emp_id, first_name, last_name, works_with.emp_id, Max(total_sales)
+from employee, works_with
+where employee.emp_id = works_with.emp_id
+
+-- Find the total amount of money spent by each client
+select client.client_id, client_name, SUM(total_sales), works_with.client_id
+FROM client, works_with
+where client.client_id = works_with.client_id
+GROUP BY works_with.client_id;
+
+-- Find any branch suppliers who are in the label business
+SELECT *
+FROM branch_supplier
+WHERE supplier_name LIKE '% Label%';
+
+-- Find a list of employee and branch names
+UNION
+
+-- select the employees with the branch they each work in:
+select employee.branch_id, first_name, last_name, branch.branch_id, branch_name
+FROM employee, branch
+where employee.branch_id = branch.branch_id
+
+-- Find a list of all clients & branch suppliers' names with the branches they are associated with:
+SELECT client.client_name AS Non-Employee_Entities, client.branch_id AS Branch_ID
+FROM client
+UNION
+SELECT branch_supplier.supplier_name, branch_supplier.branch_id
+FROM branch_supplier;
+
+
+
+-- find all teh branches with their branch managers:
+SELECT employee.emp_id, employee.first_name, branch.branch_name
+FROM employee
+JOIN branch 
+ON employee.emp_id = branch.mgr_id;
+this combines the columns of the employee and branch table on the emp_id column
+or i can do this
+ SELECT employee.emp_id, employee.first_name, branch.branch_name
+FROM employee,branch 
+where employee.emp_id = branch.mgr_id;
+when we use LEFT JOIN WE INCLUDE ALL THE ROWS OF THE EMPLOYEE TABLE NO MATTER IF THEY ARE A BRANCH MANAGER OR NOT (so all the data from the employee table)
+SELECT employee.emp_id, employee.first_name, branch.branch_name
+FROM employee
+lEFT jOIN branch 
+ON employee.emp_id = branch.mgr_id;
+when we use Right JOIN WE INCLUDE ALL THE ROWS OF THE BRANCH TABLE NO MATTER IF THEY HAVE A MANAGER OR NOT (so all the data from the branch table)
+SELECT employee.emp_id, employee.first_name, branch.branch_name
+FROM employee
+lEFT jOIN branch 
+ON employee.emp_id = branch.mgr_id;
+a full outer join is a left join and the right join combined (so the data from both tables no matter what)
+
+
+--------- NESTED QUERIES ---------
+-- Find names of all employees who have sold over 50,000 to a single client
+SELECT employee.first_name, employee.last_name
+FROM employee
+WHERE employee.emp_id IN (SELECT works_with.emp_id
+                          FROM works_with
+                          WHERE works_with.total_sales > 50000);
+if they have a totle sales over 50000 we display their first and last names
+
+
+-- Find all clients who are handles by the branch that Michael Scott manages
+SELECT client.client_id, client.client_name
+ FROM client
+ WHERE client.branch_id = (SELECT branch.branch_id
+                           FROM branch
+                           WHERE branch.mgr_id = (SELECT employee.emp_id
+                                                  FROM employee
+                                                  WHERE employee.first_name = 'Michael' AND employee.last_name ='Scott'
+                                                  LIMIT 1));
+
+-- Find the names of employees who work with clients handled by the scranton branch
+SELECT employee.first_name, employee.last_name
+FROM employee
+WHERE employee.emp_id IN (
+                         SELECT works_with.emp_id
+                         FROM works_with
+                         )
+AND employee.branch_id = 2;
+
+-- Find the names of all clients who have spent more than 100,000 dollars
+
+SELECT client.client_name
+FROM client
+WHERE client.client_id IN (
+                          SELECT client_id
+                          FROM (
+                                SELECT SUM(works_with.total_sales) AS totals, client_id
+                                FROM works_with
+                                GROUP BY client_id) AS total_client_sales
+                          WHERE totals > 100000
+);
+
+
+--------- On DELETE ---------
+WE USE SET NULL FOR WHEN A FOREIGH KEY IS NOT A PRIMARY KEY IN OTHER TABLES 
+AND WE USE CASCADE WHEN IT IS
+
+--------- Triggers ---------
+-- IF A MALE EMP IS ADDED TO THE EMPLOYEE TABLE ADD MESSAGE "A MALE EMPLOYEE IS ADDED" IF IT'S A FEMALE PRINT "A FEMALE EMPLOYEE IS AADDED" O THE TRIGGERS_TEST TABLE
+DELIMITER $$
+CREATE
+    TRIGGER my_trigger BEFORE INSERT
+    ON employee
+    FOR EACH ROW BEGIN
+         IF NEW.sex = 'M' THEN
+               INSERT INTO trigger_test VALUES('added male employee');
+         ELSEIF NEW.sex = 'F' THEN
+               INSERT INTO trigger_test VALUES('added female');
+         ELSE
+               INSERT INTO trigger_test VALUES('added other employee');
+         END IF;
+    END$$
+DELIMITER ;
